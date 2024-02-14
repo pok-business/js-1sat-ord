@@ -129,18 +129,25 @@ const createOrdinal = async (
   inscription: Inscription,
   metaData?: MAP,
   signer?: LocalSigner | RemoteSigner,
-  additionalPayments: Payment[] = []
+  additionalPayments: Payment[] = [],
+  fundingTx?: Transaction
 ): Promise<Transaction> => {
-  let tx = new Transaction(1, 0);
 
-  // Inputs
-  let utxoIn = new TxIn(
-    Buffer.from(utxo.txid, "hex"),
-    utxo.vout,
-    Script.from_asm_string("")
-  );
+  let tx = fundingTx || new Transaction(1, 0);
+  let utxoIn
 
-  tx.add_input(utxoIn);
+  if (!fundingTx) {
+
+    // Inputs
+    utxoIn = new TxIn(
+      Buffer.from(utxo.txid, "hex"),
+      utxo.vout,
+      Script.from_asm_string("")
+    );
+
+    tx.add_input(utxoIn);
+
+  }
 
   // Outputs
   const inscriptionScript = buildInscription(
@@ -203,21 +210,25 @@ const createOrdinal = async (
     }
   }
 
-  const sig = tx.sign(
-    paymentPk,
-    SigHash.ALL | SigHash.FORKID,
-    0,
-    Script.from_asm_string(utxo.script),
-    BigInt(utxo.satoshis)
-  );
+  if (!fundingTx && utxoIn) {
 
-  utxoIn.set_unlocking_script(
-    Script.from_asm_string(
-      `${sig.to_hex()} ${paymentPk.to_public_key().to_hex()}`
-    )
-  );
+    const sig = tx.sign(
+      paymentPk,
+      SigHash.ALL | SigHash.FORKID,
+      0,
+      Script.from_asm_string(utxo.script),
+      BigInt(utxo.satoshis)
+    );
 
-  tx.set_input(0, utxoIn);
+    utxoIn.set_unlocking_script(
+      Script.from_asm_string(
+        `${sig.to_hex()} ${paymentPk.to_public_key().to_hex()}`
+      )
+    );
+
+    tx.set_input(0, utxoIn);
+  }
+
 
   return tx;
 };
@@ -289,7 +300,7 @@ const sendOrdinal = async (
 
   const fee = Math.ceil(
     satPerByteFee *
-      (tx.get_size() + P2PKH_OUTPUT_SIZE + 2 * P2PKH_INPUT_SCRIPT_SIZE)
+    (tx.get_size() + P2PKH_OUTPUT_SIZE + 2 * P2PKH_INPUT_SCRIPT_SIZE)
   );
   const change = BigInt(paymentUtxo.satoshis) - totalOut - BigInt(fee);
   let changeOut = new TxOut(change, changeScript);
