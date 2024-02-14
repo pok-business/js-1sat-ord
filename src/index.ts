@@ -123,14 +123,14 @@ export type Payment = {
 const createOrdinal = async (
   utxo: Utxo,
   destinationAddress: string,
-  paymentPk: PrivateKey,
   changeAddress: string,
   satPerByteFee: number,
   inscription: Inscription,
-  metaData?: MAP,
-  signer?: LocalSigner | RemoteSigner,
   additionalPayments: Payment[] = [],
-  fundingTx?: Transaction
+  paymentPk?: PrivateKey,
+  metaData?: MAP,
+  fundingTx?: Transaction,
+  signer?: LocalSigner | RemoteSigner
 ): Promise<Transaction> => {
 
   let tx = fundingTx || new Transaction(1, 0);
@@ -210,7 +210,7 @@ const createOrdinal = async (
     }
   }
 
-  if (!fundingTx && utxoIn) {
+  if (!fundingTx && utxoIn && paymentPk) {
 
     const sig = tx.sign(
       paymentPk,
