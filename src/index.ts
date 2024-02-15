@@ -180,7 +180,7 @@ const createOrdinal = async (
   const changeaddr = P2PKHAddress.from_string(changeAddress);
   const changeScript = changeaddr.get_locking_script();
   const fee = Math.ceil(
-    satPerByteFee * (tx.get_size() + P2PKH_OUTPUT_SIZE + P2PKH_INPUT_SCRIPT_SIZE)
+    satPerByteFee * (tx.get_size() + P2PKH_OUTPUT_SIZE + (fundingTx ? 0 : P2PKH_INPUT_SCRIPT_SIZE))
   );
   const change = BigInt(utxo.satoshis) - totalOut - BigInt(fee);
   if (change < 0) throw new Error("Inadequate satoshis for fee");
