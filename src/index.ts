@@ -120,6 +120,80 @@ export type Payment = {
   amount: bigint;
 };
 
+const createOrdinalFromFundingTx = async ({
+  fundingTx,
+  utxos,
+  destinationAddress,
+  changeAddress,
+  satPerByteFee,
+  inscription,
+  additionalPayments = [],
+  metadata,
+  signer
+}: {
+  fundingTx: Transaction;
+  utxos: Utxo[];
+  destinationAddress: string;
+  changeAddress: string;
+  satPerByteFee: number;
+  inscription: Inscription;
+  additionalPayments: Payment[];
+  metadata: MAP;
+  signer: LocalSigner;
+}): Promise<Transaction> => {
+
+  const tx = fundingTx;
+
+  // Outputs
+  const inscriptionScript = buildInscription(
+      P2PKHAddress.from_string(destinationAddress),
+      inscription.dataB64,
+      inscription.contentType,
+      metadata
+  );
+
+  let satOut = new TxOut(BigInt(1), inscriptionScript);
+  tx.add_output(satOut);
+
+  // add additional payments if any
+  for (let p of additionalPayments) {
+      let satOut = new TxOut(
+          p.amount,
+          P2PKHAddress.from_string(p.to).get_locking_script()
+      );
+      tx.add_output(satOut);
+  }
+
+  // total the outputs
+  let totalOut = 0n;
+  let numOuts = tx.get_noutputs();
+  for (const i of Array(numOuts).keys()) {
+      totalOut += tx.get_output(i)?.get_satoshis() || 0n;
+  }
+
+  // add change
+  const changeaddr = P2PKHAddress.from_string(changeAddress);
+  const changeScript = changeaddr.get_locking_script();
+  const fee = Math.ceil(
+      satPerByteFee * (tx.get_size() + P2PKH_OUTPUT_SIZE)
+  );
+  const change = BigInt(utxos.reduce((acc, curr) => acc + curr.satoshis, 0)) - totalOut - BigInt(fee);
+  if (change < 0) throw new Error("Inadequate satoshis for fee");
+  if (change > 0) {
+      let changeOut = new TxOut(BigInt(change), changeScript);
+      tx.add_output(changeOut);
+  }
+
+  // sign tx if idKey or remote signer like starfish/tokenpass
+  const idKey = (signer as LocalSigner)?.idKey;
+  // input txids are available so sigma signature
+  // can be final before signing the tx
+  const sigma = new Sigma(tx);
+  const { signedTx } = sigma.sign(idKey);
+
+  return signedTx;
+};
+
 const createOrdinal = async (
   utxo: Utxo,
   destinationAddress: string,
@@ -398,4 +472,4 @@ export const P2PKH_INPUT_SCRIPT_SIZE = 107;
 export const P2PKH_FULL_INPUT_SIZE = 148;
 export const P2PKH_OUTPUT_SIZE = 34;
 
-export { buildInscription, createOrdinal, sendOrdinal, sendUtxos };
+export { buildInscription, createOrdinal, createOrdinalFromFundingTx, sendOrdinal, sendUtxos };

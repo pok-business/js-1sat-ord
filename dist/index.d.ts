@@ -29,10 +29,21 @@ export type Payment = {
     to: string;
     amount: bigint;
 };
+declare const createOrdinalFromFundingTx: ({ fundingTx, utxos, destinationAddress, changeAddress, satPerByteFee, inscription, additionalPayments, metadata, signer }: {
+    fundingTx: Transaction;
+    utxos: Utxo[];
+    destinationAddress: string;
+    changeAddress: string;
+    satPerByteFee: number;
+    inscription: Inscription;
+    additionalPayments: Payment[];
+    metadata: MAP;
+    signer: LocalSigner;
+}) => Promise<Transaction>;
 declare const createOrdinal: (utxo: Utxo, destinationAddress: string, changeAddress: string, satPerByteFee: number, inscription: Inscription, additionalPayments?: Payment[], paymentPk?: PrivateKey, metaData?: MAP, fundingTx?: Transaction, signer?: LocalSigner | RemoteSigner) => Promise<Transaction>;
 declare const sendOrdinal: (paymentUtxo: Utxo, ordinal: Utxo, paymentPk: PrivateKey, changeAddress: string, satPerByteFee: number, ordPk: PrivateKey, ordDestinationAddress: string, reinscription?: Inscription, metaData?: MAP, additionalPayments?: Payment[]) => Promise<Transaction>;
 declare const sendUtxos: (utxos: Utxo[], paymentPk: PrivateKey, address: P2PKHAddress, feeSats: number) => Promise<Transaction>;
 export declare const P2PKH_INPUT_SCRIPT_SIZE = 107;
 export declare const P2PKH_FULL_INPUT_SIZE = 148;
 export declare const P2PKH_OUTPUT_SIZE = 34;
-export { buildInscription, createOrdinal, sendOrdinal, sendUtxos };
+export { buildInscription, createOrdinal, createOrdinalFromFundingTx, sendOrdinal, sendUtxos };
